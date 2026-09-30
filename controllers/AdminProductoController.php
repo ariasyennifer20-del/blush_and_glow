@@ -22,9 +22,9 @@ class AdminProductoController {
         $productos = $this->productoModel->obtenerTodos();
         $pageTitle = "Gestión de Productos | Blush & Glow";
         
-        // Carga de vistas con rutas absolutas
+        // Carga el layout y la vista de administración de productos
         require_once __DIR__ . '/../views/layout/header.php';
-        require_once __DIR__ . '/../views/admin/index.php'; // o productos_index.php según el nombre de tu vista
+        require_once __DIR__ . '/../views/admin/index.php'; 
         require_once __DIR__ . '/../views/layout/footer.php';
     }
 
