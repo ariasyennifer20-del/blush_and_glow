@@ -8,16 +8,31 @@
     --font-main: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
+/* Reset Global */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
+/* Estructura Base */
+html {
+    min-height: 100%;
+}
+
 body {
     font-family: var(--font-main);
     background-color: var(--bg-light);
     color: var(--text-dark);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Contenido principal */
+main,
+.main-content {
+    flex: 1 0 auto;
 }
 
 /* Navbar */
@@ -192,9 +207,10 @@ body {
 
 /* Footer */
 .footer {
+    flex-shrink: 0;
     text-align: center;
     padding: 2rem;
     background-color: var(--white);
-    margin-top: 3rem;
+    margin-top: auto;
     border-top: 1px solid #eee;
 }

@@ -11,7 +11,7 @@
             </div>
         <?php endif; ?>
 
-        <form action="index.php?c=usuario&a=registro" method="POST">
+        <form action="index.php?c=usuario&a=registro" method="POST" id="formRegistro">
             <div style="margin-bottom: 1.2rem;">
                 <label for="nombre" style="display: block; font-weight: 500; margin-bottom: 0.4rem;">Nombre Completo *</label>
                 <input type="text" id="nombre" name="nombre" required placeholder="Ej: Maria Perez" 
@@ -29,7 +29,20 @@
             <div style="margin-bottom: 1.2rem;">
                 <label for="password" style="display: block; font-weight: 500; margin-bottom: 0.4rem;">Contraseña *</label>
                 <input type="password" id="password" name="password" required placeholder="Crea una contraseña segura" 
+                       pattern="^(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[a-zA-Z]).{8,}$"
+                       title="La contraseña debe tener al menos 8 caracteres, incluir una mayúscula, una minúscula y un número."
                        style="width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 6px; font-size: 0.95rem; box-sizing: border-box;">
+
+                <!-- Lista de verificación visual de requisitos -->
+                <div id="password-requirements" style="margin-top: 0.6rem; padding: 0.8rem; background-color: #f9f9f9; border-radius: 6px; border: 1px solid #eee; font-size: 0.85rem;">
+                    <p style="margin: 0 0 0.4rem 0; font-weight: 600; color: #555;">La contraseña debe incluir:</p>
+                    <ul style="margin: 0; padding-left: 1.2rem; color: #777; list-style-type: none;">
+                        <li id="req-length" style="margin-bottom: 0.2rem; transition: color 0.2s;">✖ Mínimo 8 caracteres</li>
+                        <li id="req-uppercase" style="margin-bottom: 0.2rem; transition: color 0.2s;">✖ Al menos una letra mayúscula</li>
+                        <li id="req-lowercase" style="margin-bottom: 0.2rem; transition: color 0.2s;">✖ Al menos una letra minúscula</li>
+                        <li id="req-number" style="margin-bottom: 0.2rem; transition: color 0.2s;">✖ Al menos un número</li>
+                    </ul>
+                </div>
             </div>
 
             <div style="margin-bottom: 1.2rem;">
@@ -52,7 +65,4 @@
 
         <p style="text-align: center; margin-top: 1.5rem; font-size: 0.9rem; color: #666;">
             ¿Ya tienes una cuenta? 
-            <a href="index.php?c=usuario&a=login" style="color: var(--accent-color); font-weight: bold; text-decoration: none;">Inicia sesión</a>
-        </p>
-    </div>
-</main>
+            <a href="index.php?c=usuario&a=login" style="color: var(--accent
