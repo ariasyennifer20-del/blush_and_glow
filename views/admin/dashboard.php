@@ -25,4 +25,46 @@
         </div>
 
     </div>
+
+    <!-- Sección de Pedidos Recientes de Clientes -->
+    <section style="background: #fff; padding: 2rem; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
+        <h2 style="color: #b85b74; margin-top: 0; margin-bottom: 1rem; font-size: 1.4rem;">Pedidos Recientes de Clientes</h2>
+        
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.95rem;">
+                <thead>
+                    <tr style="background: #fdf2f4; color: #b85b74; border-bottom: 2px solid #f3d1d7;">
+                        <th style="padding: 12px;">ID Pedido</th>
+                        <th style="padding: 12px;">Cliente</th>
+                        <th style="padding: 12px;">Fecha</th>
+                        <th style="padding: 12px;">Total</th>
+                        <th style="padding: 12px;">Estado</th>
+                        <th style="padding: 12px;">Dirección</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (!empty($pedidos)): ?>
+                        <?php foreach ($pedidos as $pedido): ?>
+                            <tr style="border-bottom: 1px solid #eee;">
+                                <td style="padding: 12px; font-weight: bold; color: #333;">#<?php echo $pedido['pedido_id']; ?></td>
+                                <td style="padding: 12px; color: #555;"><?php echo htmlspecialchars($pedido['cliente']); ?></td>
+                                <td style="padding: 12px; color: #555;"><?php echo $pedido['fecha_pedido']; ?></td>
+                                <td style="padding: 12px; color: #27ae60; font-weight: bold;">$<?php echo number_format($pedido['total'], 2); ?></td>
+                                <td style="padding: 12px;">
+                                    <span style="background: #fef3c7; color: #d97706; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; font-weight: bold;">
+                                        <?php echo $pedido['estado']; ?>
+                                    </span>
+                                </td>
+                                <td style="padding: 12px; color: #666;"><?php echo htmlspecialchars($pedido['direccion_envio']); ?></td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr>
+                            <td colspan="6" style="padding: 2rem; text-align: center; color: #888;">No hay pedidos registrados todavía.</td>
+                        </tr>
+                    <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+    </section>
 </main>

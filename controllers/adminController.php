@@ -1,6 +1,8 @@
 <?php
 // controllers/AdminController.php
 
+require_once __DIR__ . '/../models/PedidoModel.php'; // 1. Importar el modelo de pedidos
+
 class AdminController {
 
     public function __construct() {
@@ -18,6 +20,10 @@ class AdminController {
     public function index() {
         $pageTitle = "Panel de Administración | Blush & Glow";
         
+        // 2. Instanciar el modelo y obtener todos los pedidos de los clientes
+        $pedidoModel = new PedidoModel();
+        $pedidos = $pedidoModel->obtenerPedidosAdmin(); // Esta función trae los pedidos con el nombre del cliente
+
         require_once __DIR__ . '/../views/layout/header.php';
         require_once __DIR__ . '/../views/admin/dashboard.php';
         require_once __DIR__ . '/../views/layout/footer.php';
