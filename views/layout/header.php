@@ -9,6 +9,8 @@ if (session_status() === PHP_SESSION_NONE) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?php echo isset($pageTitle) ? $pageTitle : 'Blush & Glow'; ?></title>
+    <!-- Incluyendo Bootstrap 5 para que las vistas (como el checkout) se adapten y se vean profesionales -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/BLUSH_AND_GLOW/public/css/styles.css">
 </head>
 <body>
@@ -16,7 +18,7 @@ if (session_status() === PHP_SESSION_NONE) {
     <!-- Header / Navbar -->
     <header class="navbar">
         <div class="logo">
-            <a href="index.php">Blush & Glow</a>
+            <a href="index.php" style="color: #d4a373; text-decoration: none; font-weight: bold;">Blush & Glow</a>
         </div>
         <nav>
             <ul class="nav-links">
@@ -47,7 +49,6 @@ if (session_status() === PHP_SESSION_NONE) {
                     <a href="index.php?c=adminUsuario&a=index" style="text-decoration: none; font-weight: 500;">👥 Clientes</a>
                 <?php endif; ?>
 
-                <a href="index.php?c=usuario&a=quienesSomos">Quiénes somos</a>
                 <a href="index.php?c=usuario&a=logout" style="color: #d9534f; text-decoration: none;">Cerrar Sesión</a>
             <?php else: ?>
                 <a href="index.php?c=usuario&a=login" class="btn-account">Mi Cuenta</a>

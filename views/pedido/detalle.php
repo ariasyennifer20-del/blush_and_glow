@@ -1,46 +1,295 @@
-<!-- views/pedido/detalle.php -->
-<main class="catalog-container" style="padding: 2rem; max-width: 900px; margin: 0 auto;">
-    <a href="index.php?c=cliente&a=perfil" style="text-decoration: none; color: #666; font-weight: bold;">
-        &larr; Volver a Mis Pedidos
-    </a>
+<div class="container my-5">
 
-    <h2 style="margin-top: 1rem;">Detalle del Pedido #<?php echo htmlspecialchars($_GET['id'] ?? ''); ?></h2>
+    <div class="row justify-content-center">
 
-    <div style="background: #fff; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); overflow: hidden; margin-top: 1rem;">
-        <table style="width: 100%; border-collapse: collapse;">
-            <thead>
-                <tr style="background-color: var(--primary-color, #f8c8dc); text-align: left;">
-                    <th style="padding: 1rem;">Producto</th>
-                    <th style="padding: 1rem;">Precio Unitario</th>
-                    <th style="padding: 1rem;">Cantidad</th>
-                    <th style="padding: 1rem;">Subtotal</th>
-                </tr>
-            </thead>
-            <tbody>
+        <div class="col-lg-10">
+
+            <div class="card shadow-sm border-0 p-4 p-md-5 rounded-4 bg-white">
+
+
+
+                <!-- Encabezado -->
+
+                <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+
+                    <div>
+
+                        <h2 class="fw-bold m-0" style="color: #333;">
+
+                            Detalle del Pedido #<?= htmlspecialchars($_GET['id'] ?? '') ?>
+
+                        </h2>
+
+                        <p class="text-muted m-0">
+
+                            Consulta los productos y cantidades solicitados en este pedido.
+
+                        </p>
+
+                    </div>
+
+
+
+                    <a href="javascript:history.back()"
+
+                       class="btn rounded-pill px-4 py-2 fw-semibold text-white shadow-sm"
+
+                       style="background-color: #d4a373; border: none;">
+
+                        &larr; Volver
+
+                    </a>
+
+                </div>
+
+
+
                 <?php if (!empty($detalles)): ?>
-                    <?php foreach ($detalles as $item): ?>
-                        <tr style="border-bottom: 1px solid #eee;">
-                            <td style="padding: 1rem; display: flex; align-items: center; gap: 10px;">
-                                <?php if (!empty($item['imagen_url'])): ?>
-                                    <img src="<?php echo htmlspecialchars($item['imagen_url']); ?>" alt="" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px;">
-                                <?php endif; ?>
-                                <span><?php echo htmlspecialchars($item['nombre']); ?></span>
-                            </td>
-                            <td style="padding: 1rem;">$<?php echo number_format($item['precio_unitario'] ?? $item['precio'] ?? 0, 2); ?></td>
-                            <td style="padding: 1rem;"><?php echo $item['cantidad']; ?></td>
-                            <td style="padding: 1rem; font-weight: bold;">
-                                $<?php echo number_format(($item['precio_unitario'] ?? $item['precio'] ?? 0) * $item['cantidad'], 2); ?>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
+
+
+
+                    <?php
+
+                    $totalPedido = 0;
+
+                    $totalUnidades = 0;
+
+                    ?>
+
+
+
+                    <div class="table-responsive">
+
+                        <table class="table align-middle">
+
+
+
+                            <thead style="background-color: #fcf6f0; color: #b85b74;">
+
+                                <tr>
+
+                                    <th class="py-3">Producto</th>
+
+                                    <th class="py-3 text-center">Precio Unitario</th>
+
+                                    <th class="py-3 text-center">Cantidad de unidades</th>
+
+                                    <th class="py-3 text-end">Subtotal</th>
+
+                                </tr>
+
+                            </thead>
+
+
+
+                            <tbody>
+
+
+
+                                <?php foreach ($detalles as $detalle): ?>
+
+
+
+                                    <?php
+
+                                    // Obtener cantidad y precio del producto
+
+                                    $cantidad = isset($detalle['cantidad'])
+
+                                        ? (int)$detalle['cantidad'] : 0;
+
+
+
+                                    $precio = (float)$detalle['precio_unitario'];
+
+
+
+                                    // Calcular subtotal
+
+                                    $subtotal = $precio * $cantidad;
+
+
+
+                                    // Sumar unidades y total del pedido
+
+                                    $totalUnidades += $cantidad;
+
+                                    $totalPedido += $subtotal;
+
+                                    ?>
+
+
+
+                                    <tr>
+
+                                        <td class="fw-medium text-dark">
+
+                                            <div class="d-flex align-items-center gap-3">
+
+
+
+                                                <?php if (!empty($detalle['imagen_url'])): ?>
+
+                                                    <img src="<?= htmlspecialchars($detalle['imagen_url']) ?>"
+
+                                                         alt="Producto"
+
+                                                         class="rounded"
+
+                                                         style="width: 45px; height: 45px; object-fit: cover;">
+
+                                                <?php endif; ?>
+
+
+
+                                                <span>
+
+                                                    <?= htmlspecialchars($detalle['producto']) ?>
+
+                                                </span>
+
+
+
+                                            </div>
+
+                                        </td>
+
+
+
+                                        <td class="text-center text-secondary">
+
+                                            $<?= number_format($precio, 2) ?>
+
+                                        </td>
+
+
+
+                                        <!-- Cantidad solicitada -->
+
+                                        <td class="text-center">
+
+                                         <span class="badge bg-light text-dark border px-3 py-2 rounded-pill fw-bold">
+
+        <?= (int)$detalle['cantidad'] ?>  unidades
+
+    </span>
+
+</td>
+
+
+
+                                        <!-- Subtotal -->
+
+                                        <td class="text-end fw-semibold" style="color: #b85b74;">
+
+                                            $<?= number_format($subtotal, 2) ?>
+
+                                        </td>
+
+                                    </tr>
+
+
+
+                                <?php endforeach; ?>
+
+
+
+                            </tbody>
+
+                        </table>
+
+                    </div>
+
+
+
+                    <!-- Resumen del pedido -->
+
+                    <div class="p-4 rounded-4 mt-4 shadow-sm"
+
+                         style="background-color: #fcf6f0; border: 1px solid #f3e5dc;">
+
+
+
+                        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+
+                            <span class="fw-bold text-muted">
+
+                                Total de productos solicitados:
+
+                            </span>
+
+
+
+                            <span class="fw-bold fs-5" style="color: #b85b74;">
+
+                                <?= $totalUnidades ?> unidades
+
+                            </span>
+
+                        </div>
+
+
+
+                        <hr style="border-color: #ead8ca;">
+
+
+
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+
+                            <div>
+
+                                <span class="text-muted small d-block fw-bold">
+
+                                    Estado Financiero
+
+                                </span>
+
+
+
+                                <span class="fw-bold fs-5" style="color: #b85b74;">
+
+                                    Total del Pedido:
+
+                                </span>
+
+                            </div>
+
+
+
+                            <span class="fs-3 fw-bold text-dark">
+
+                                $<?= number_format($totalPedido, 2) ?>
+
+                            </span>
+
+                        </div>
+
+
+
+                    </div>
+
+
+
                 <?php else: ?>
-                    <tr>
-                        <td colspan="4" style="padding: 1.5rem; text-align: center; color: #777;">
-                            No se encontraron detalles para este pedido.
-                        </td>
-                    </tr>
+
+
+
+                    <div class="alert alert-warning rounded-3 text-center my-4">
+
+                        No se encontraron productos o detalles asociados a este pedido.
+
+                    </div>
+
+
+
                 <?php endif; ?>
-            </tbody>
-        </table>
+
+
+
+            </div>
+
+        </div>
+
     </div>
-</main>
+
+</div> 

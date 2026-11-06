@@ -92,10 +92,28 @@ class ProductoModel {
         ]);
     }
 
-    // Eliminar producto
+    // Eliminar producto y su historial asociado de forma segura mediante transacción
     public function eliminar($id) {
-        $sql = "DELETE FROM productos WHERE producto_id = :id";
-        $stmt = $this->db->prepare($sql);
-        return $stmt->execute([':id' => $id]);
+        try {
+            // Iniciar transacción de base de datos
+            $this->db->beginTransaction();
+
+            // 1. Eliminar primero las referencias del producto en el detalle de pedidos
+            $stmtDetalle = $this->db->prepare("DELETE FROM detalle_pedidos WHERE producto_id = :id");
+            $stmtDetalle->execute([':id' => $id]);
+
+            // 2. Eliminar el producto de la tabla principal
+            $stmtProd = $this->db->prepare("DELETE FROM productos WHERE producto_id = :id");
+            $stmtProd->execute([':id' => $id]);
+
+            // Confirmar transacción exitosa
+            $this->db->commit();
+            return true;
+
+        } catch (Exception $e) {
+            // Revertir cambios en caso de error
+            $this->db->rollBack();
+            throw new Exception("No se pudo eliminar el producto: " . $e->getMessage());
+        }
     }
 }

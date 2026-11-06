@@ -29,15 +29,37 @@ class PedidoController {
             exit();
         }
 
+        // BLOQUEO ESTRICTO EN CHECKOUT
+        foreach ($_SESSION['carrito'] as $item) {
+            $prodId = $item['producto_id'] ?? $item['id'] ?? $item['id_producto'] ?? null;
+            $cant   = $item['cantidad'] ?? $item['qty'] ?? 1;
+
+            if ($prodId) {
+                $stmtCheck = $this->db->prepare("SELECT stock, nombre FROM productos WHERE producto_id = ?");
+                $stmtCheck->execute([$prodId]);
+                $prodDb = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+
+                if ($prodDb) {
+                    if ($cant > $prodDb['stock']) {
+                        header("Location: index.php?c=producto&a=catalogo&error=stock_excedido");
+                        exit();
+                    }
+                }
+            }
+        }
+
         $total = 0;
         foreach ($_SESSION['carrito'] as $item) {
-            $total += $item['precio'] * $item['cantidad'];
+            $precio = $item['precio'] ?? $item['valor'] ?? 0;
+            $cant   = $item['cantidad'] ?? $item['qty'] ?? 1;
+            $total += $precio * $cant;
         }
 
         $pageTitle = "Finalizar Compra | Blush & Glow";
-        require_once __DIR__ . '/../views/layout/header.php';
-        require_once __DIR__ . '/../views/pedido/checkout.php';
-        require_once __DIR__ . '/../views/layout/footer.php';
+        
+        require_once dirname(__DIR__) . '/views/layout/header.php';
+        require_once dirname(__DIR__) . '/views/pedido/checkout.php';
+        require_once dirname(__DIR__) . '/views/layout/footer.php';
     }
 
     // Procesar y guardar el pedido en la BD
@@ -48,21 +70,82 @@ class PedidoController {
         }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $usuarioId = $_SESSION['usuario']['usuario_id'] ?? $_SESSION['usuario']['id'] ?? null;
+            // Extracción inteligente y blindada del ID de usuario
+            $usuarioId = null;
+
+            if (is_array($_SESSION['usuario'])) {
+                $usuarioId = $_SESSION['usuario']['usuario_id'] 
+                          ?? $_SESSION['usuario']['id'] 
+                          ?? $_SESSION['usuario']['id_usuario'] 
+                          ?? $_SESSION['usuario']['user_id'] 
+                          ?? null;
+
+                if (!$usuarioId) {
+                    $email = $_SESSION['usuario']['email'] ?? $_SESSION['usuario']['correo'] ?? null;
+                    if ($email) {
+                        $stmtU = $this->db->prepare("SELECT usuario_id FROM usuarios WHERE email = ?");
+                        $stmtU->execute([$email]);
+                        $rowU = $stmtU->fetch(PDO::FETCH_ASSOC);
+                        if ($rowU) {
+                            $usuarioId = $rowU['usuario_id'];
+                        }
+                    }
+                }
+            } else {
+                $val = $_SESSION['usuario'];
+                if (is_numeric($val)) {
+                    $usuarioId = $val;
+                } else {
+                    $stmtU = $this->db->prepare("SELECT usuario_id FROM usuarios WHERE email = ? OR nombre = ?");
+                    $stmtU->execute([$val, $val]);
+                    $rowU = $stmtU->fetch(PDO::FETCH_ASSOC);
+                    if ($rowU) {
+                        $usuarioId = $rowU['usuario_id'];
+                    }
+                }
+            }
+
+            if (!$usuarioId) {
+                die("Error crítico: No se pudo asociar el pedido a ningún usuario. Por favor, cierra sesión e ingresa nuevamente.");
+            }
+
             $direccion = trim($_POST['direccion_envio'] ?? '');
 
             if (empty($direccion)) {
                 $error = "La dirección de envío es obligatoria.";
-                require_once __DIR__ . '/../views/layout/header.php';
-                require_once __DIR__ . '/../views/pedido/checkout.php';
-                require_once __DIR__ . '/../views/layout/footer.php';
+                require_once dirname(__DIR__) . '/views/layout/header.php';
+                require_once dirname(__DIR__) . '/views/pedido/checkout.php';
+                require_once dirname(__DIR__) . '/views/layout/footer.php';
                 return;
             }
 
-            // Calcular el total
+            // VALIDACIÓN DE STOCK FINAL
+            foreach ($_SESSION['carrito'] as $item) {
+                $prodId = $item['producto_id'] ?? $item['id'] ?? $item['id_producto'] ?? null;
+                $cant   = $item['cantidad'] ?? $item['qty'] ?? 1;
+
+                $stmtCheck = $this->db->prepare("SELECT stock, nombre FROM productos WHERE producto_id = ?");
+                $stmtCheck->execute([$prodId]);
+                $prodDb = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+
+                if (!$prodDb || $prodDb['stock'] < $cant) {
+                    $nombreProd = $prodDb['nombre'] ?? 'Producto';
+                    $stockDispo = $prodDb['stock'] ?? 0;
+                    $error = "No se puede procesar la compra. Stock insuficiente para '$nombreProd' (Has solicitado $cant unidades y solo hay $stockDispo disponibles).";
+                    
+                    require_once dirname(__DIR__) . '/views/layout/header.php';
+                    require_once dirname(__DIR__) . '/views/pedido/checkout.php';
+                    require_once dirname(__DIR__) . '/views/layout/footer.php';
+                    return;
+                }
+            }
+
+            // Calcular el total de forma segura
             $total = 0;
             foreach ($_SESSION['carrito'] as $item) {
-                $total += $item['precio'] * $item['cantidad'];
+                $precio = $item['precio'] ?? $item['valor'] ?? 0;
+                $cant   = $item['cantidad'] ?? $item['qty'] ?? 1;
+                $total += $precio * $cant;
             }
 
             try {
@@ -70,17 +153,17 @@ class PedidoController {
                 $this->db->beginTransaction();
 
                 // 1. Insertar el encabezado del pedido
-                $sqlPedido = "INSERT INTO pedidos (usuario_id, total, estado, direccion_envio) VALUES (:usuario_id, :total, 'pagado', :direccion_envio)";
+                $sqlPedido = "INSERT INTO pedidos (usuario_id, total, estado, direccion_envio, fecha_pedido) VALUES (:usuario_id, :total, 'pagado', :direccion_envio, NOW())";
                 $stmtPedido = $this->db->prepare($sqlPedido);
                 $stmtPedido->execute([
-                    ':usuario_id'      => $usuarioId,
-                    ':total'           => $total,
+                    ':usuario_id'       => $usuarioId,
+                    ':total'            => $total,
                     ':direccion_envio' => $direccion
                 ]);
 
                 $pedidoId = $this->db->lastInsertId();
 
-                // 2. Insertar los detalles del pedido y actualizar stock
+                // 2. Insertar los detalles del pedido y descontar unidades
                 $sqlDetalle = "INSERT INTO detalle_pedidos (pedido_id, producto_id, cantidad, precio_unitario) VALUES (:pedido_id, :producto_id, :cantidad, :precio_unitario)";
                 $stmtDetalle = $this->db->prepare($sqlDetalle);
 
@@ -88,16 +171,20 @@ class PedidoController {
                 $stmtStock = $this->db->prepare($sqlStock);
 
                 foreach ($_SESSION['carrito'] as $item) {
+                    $prodId = $item['producto_id'] ?? $item['id'] ?? $item['id_producto'] ?? null;
+                    $cant   = $item['cantidad'] ?? $item['qty'] ?? 1;
+                    $precio = $item['precio'] ?? $item['valor'] ?? 0;
+
                     $stmtDetalle->execute([
                         ':pedido_id'       => $pedidoId,
-                        ':producto_id'     => $item['producto_id'],
-                        ':cantidad'        => $item['cantidad'],
-                        ':precio_unitario' => $item['precio']
+                        ':producto_id'     => $prodId,
+                        ':cantidad'        => $cant,
+                        ':precio_unitario' => $precio
                     ]);
 
                     $stmtStock->execute([
-                        ':cantidad'    => $item['cantidad'],
-                        ':producto_id' => $item['producto_id']
+                        ':cantidad'    => $cant,
+                        ':producto_id' => $prodId
                     ]);
                 }
 
@@ -122,9 +209,9 @@ class PedidoController {
     // Método para mostrar la confirmación del pedido
     public function confirmacion() {
         $pageTitle = "Pedido Confirmado | Blush & Glow";
-        require_once __DIR__ . '/../views/layout/header.php';
-        require_once __DIR__ . '/../views/pedido/confirmacion.php';
-        require_once __DIR__ . '/../views/layout/footer.php';
+        require_once dirname(__DIR__) . '/views/layout/header.php';
+        require_once dirname(__DIR__) . '/views/pedido/confirmacion.php';
+        require_once dirname(__DIR__) . '/views/layout/footer.php';
     }
 
     // Método para ver los ítems/productos comprados en un pedido específico
@@ -138,19 +225,21 @@ class PedidoController {
 
         if ($pedidoId) {
             $pedidoModel = new PedidoModel();
-            
-            // Obtener productos asociados al pedido usando el modelo
             $detalles = $pedidoModel->obtenerDetallePedido($pedidoId);
 
             $pageTitle = "Detalle del Pedido #" . $pedidoId;
             
-            require_once __DIR__ . '/../views/layout/header.php';
-            require_once __DIR__ . '/../views/pedido/detalle.php';
-            require_once __DIR__ . '/../views/layout/footer.php';
+            require_once dirname(__DIR__) . '/views/layout/header.php';
+            // Carga unificada para evitar desajustes de rutas en las vistas de detalle
+            if (file_exists(dirname(__DIR__) . '/views/cliente/pedido/detalle.php')) {
+                require_once dirname(__DIR__) . '/views/cliente/pedido/detalle.php';
+            } else {
+                require_once dirname(__DIR__) . '/views/pedido/detalle.php';
+            }
+            require_once dirname(__DIR__) . '/views/layout/footer.php';
         } else {
             header("Location: index.php?c=cliente&a=perfil");
             exit();
         }
     }
-
 }

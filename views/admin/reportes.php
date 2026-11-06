@@ -49,27 +49,39 @@
                         <th style="padding: 14px 18px;">Fecha</th>
                         <th style="padding: 14px 18px;">Monto Total</th>
                         <th style="padding: 14px 18px; text-align: center;">Estado</th>
+                        <th style="padding: 14px 18px; text-align: center;">Detalle</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($ventasRecientes as $venta): ?>
-                        <tr style="border-bottom: 1px solid #f9f9f9; font-size: 14px;">
-                            <td style="padding: 12px 18px; color: #666; font-weight: bold;">#<?= $venta['id'] ?></td>
-                            <td style="padding: 12px 18px; color: #333; font-weight: 500;"><?= htmlspecialchars($venta['cliente']) ?></td>
-                            <td style="padding: 12px 18px; color: #777;"><?= $venta['fecha'] ?></td>
-                            <td style="padding: 12px 18px; color: #b85b74; font-weight: bold;">$<?= number_format($venta['monto'], 2) ?></td>
-                            <td style="padding: 12px 18px; text-align: center;">
-                                <?php 
-                                    $bg = '#fff3cd'; $color = '#856404'; // Pendiente
-                                    if ($venta['estado'] === 'Completado') { $bg = '#d4edda'; $color = '#155724'; }
-                                    if ($venta['estado'] === 'Enviado') { $bg = '#cce5ff'; $color = '#004085'; }
-                                ?>
-                                <span style="background-color: <?= $bg ?>; color: <?= $color ?>; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold;">
-                                    <?= $venta['estado'] ?>
-                                </span>
-                            </td>
+                    <?php if (!empty($ventasRecientes)): ?>
+                        <?php foreach ($ventasRecientes as $venta): ?>
+                            <tr style="border-bottom: 1px solid #f9f9f9; font-size: 14px;">
+                                <td style="padding: 12px 18px; color: #666; font-weight: bold;">#<?= $venta['pedido_id'] ?></td>
+                                <td style="padding: 12px 18px; color: #333; font-weight: 500;"><?= htmlspecialchars($venta['cliente'] ?? 'Cliente General') ?></td>
+                                <td style="padding: 12px 18px; color: #777;"><?= $venta['fecha_pedido'] ?></td>
+                                <td style="padding: 12px 18px; color: #b85b74; font-weight: bold;">$<?= number_format($venta['total'], 2) ?></td>
+                                <td style="padding: 12px 18px; text-align: center;">
+                                    <?php 
+                                        $bg = '#fff3cd'; $color = '#856404'; // Pendiente
+                                        if (strtolower($venta['estado']) === 'completado' || strtolower($venta['estado']) === 'pagado') { $bg = '#d4edda'; $color = '#155724'; }
+                                        if (strtolower($venta['estado']) === 'enviado') { $bg = '#cce5ff'; $color = '#004085'; }
+                                    ?>
+                                    <span style="background-color: <?= $bg ?>; color: <?= $color ?>; padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold;">
+                                        <?= ucfirst($venta['estado']) ?>
+                                    </span>
+                                </td>
+                                <td style="padding: 12px 18px; text-align: center;">
+                                    <a href="index.php?c=pedido&a=detalle&id=<?= $venta['pedido_id'] ?>" style="background: #b85b74; color: white; padding: 6px 12px; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: bold;">
+                                        Ver Productos 
+                                    </a>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <tr>
+                            <td colspan="6" style="padding: 2rem; text-align: center; color: #888;">No hay pedidos registrados todavía.</td>
                         </tr>
-                    <?php endforeach; ?>
+                    <?php endif; ?>
                 </tbody>
             </table>
         </div>

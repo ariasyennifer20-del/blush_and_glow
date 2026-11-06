@@ -1,12 +1,35 @@
-<!-- views/pedido/confirmacion.php -->
-<main class="catalog-container" style="text-align: center; padding: 4rem 1rem;">
-    <div style="max-width: 500px; margin: 0 auto; background: var(--white); padding: 2.5rem; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
-        <div style="font-size: 3rem; margin-bottom: 1rem;">🎉</div>
-        <h2 style="color: var(--text-dark); margin-bottom: 0.5rem;">¡Gracias por tu compra!</h2>
-        <p style="color: #666; margin-bottom: 1.5rem;">Tu pedido ha sido procesado con éxito. Pronto nos pondremos en contacto contigo para coordinar la entrega.</p>
-        
-        <a href="index.php" class="btn-primary" style="display: inline-block; padding: 0.8rem 1.5rem; text-decoration: none;">
-            Volver a la Tienda
-        </a>
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-sm border-0 p-4 p-md-5 rounded-4 bg-white text-center">
+                <div class="mb-3">
+                    <div class="d-inline-flex align-items-center justify-content-center bg-success bg-opacity-10 text-success rounded-circle mb-3" style="width: 70px; height: 70px; font-size: 2rem;">
+                        ✓
+                    </div>
+                </div>
+                
+                <h2 class="fw-bold mb-2" style="color: #333;">¡Compra Realizada con Éxito!</h2>
+                <p class="text-muted mb-4">
+                    Tu pedido ha sido procesado correctamente y el inventario ha sido actualizado. Gracias por confiar en <strong>Blush & Glow</strong>.
+                </p>
+
+                <?php $pedidoId = $_GET['id'] ?? ''; ?>
+                <?php if ($pedidoId): ?>
+                    <div class="p-3 bg-light rounded-3 mb-4">
+                        <span class="text-secondary small d-block">Número de pedido:</span>
+                        <span class="fs-5 fw-bold text-dark">#<?php echo htmlspecialchars($pedidoId); ?></span>
+                    </div>
+                <?php endif; ?>
+
+                <div class="d-grid gap-2">
+                    <a href="index.php?c=cliente&a=perfil" class="btn text-white rounded-pill py-2 fw-semibold shadow-sm" style="background-color: #d4a373; border: none;">
+                        Ver Mis Pedidos
+                    </a>
+                    <a href="index.php?c=producto&a=catalogo" class="btn btn-outline-secondary rounded-pill py-2 fw-semibold">
+                        Seguir Comprando
+                    </a>
+                </div>
+            </div>
+        </div>
     </div>
-</main>
+</div>

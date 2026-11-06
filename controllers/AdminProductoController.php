@@ -80,13 +80,23 @@ class AdminProductoController {
         require_once __DIR__ . '/../views/layout/footer.php';
     }
 
-    // Eliminar producto
+    // Eliminar producto con control de excepciones para llaves foráneas
     public function eliminar() {
         $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
         if ($id > 0) {
-            $this->productoModel->eliminar($id);
+            try {
+                $this->productoModel->eliminar($id);
+                header("Location: index.php?c=adminProducto&a=index&mensaje=eliminado_exito");
+                exit();
+            } catch (Exception $e) {
+                // Capturamos el mensaje de error y lo enviamos por URL de forma segura
+                $errorMsg = urlencode($e->getMessage());
+                header("Location: index.php?c=adminProducto&a=index&error=" . $errorMsg);
+                exit();
+            }
+        } else {
+            header("Location: index.php?c=adminProducto&a=index");
+            exit();
         }
-        header("Location: index.php?c=adminProducto&a=index");
-        exit();
     }
 }
