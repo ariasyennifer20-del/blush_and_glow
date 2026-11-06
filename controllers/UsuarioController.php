@@ -3,6 +3,8 @@
 
 require_once __DIR__ . '/../models/UsuarioModel.php';
 require_once __DIR__ . '/../models/SesionUsuario.php';
+require_once __DIR__ . '/../models/CarritoModel.php';
+require_once __DIR__ . '/../models/CarritoAlmacen.php';
 
 class UsuarioController {
     private $usuarioModel;
@@ -88,6 +90,7 @@ class UsuarioController {
                 if ($usuario && password_verify($password, $usuario['password_hash'])) {
                     // Guardar datos clave en la sesión
                     $_SESSION['usuario'] = SesionUsuario::desdeFila($usuario);
+                    $this->fusionarCarritoGuardado($_SESSION['usuario']['usuario_id']);
 
                     // Redirigir según el rol
                     if ($usuario['rol'] === 'admin') {
@@ -113,6 +116,16 @@ class UsuarioController {
         require_once __DIR__ . '/../views/layout/header.php';
         require_once __DIR__ . '/../views/usuario/quienes_somos.php';
         require_once __DIR__ . '/../views/layout/footer.php';
+    }
+
+    private function fusionarCarritoGuardado($usuarioId) {
+        if (!$usuarioId || empty($_SESSION['carrito'])) {
+            return;
+        }
+
+        $modelo = new CarritoModel();
+        $_SESSION['carrito'] = CarritoAlmacen::fusionar($_SESSION['carrito'], $modelo->cargar($usuarioId));
+        $modelo->reemplazar($usuarioId, $_SESSION['carrito']);
     }
 
     // Cierra la sesión activa

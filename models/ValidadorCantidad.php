@@ -93,18 +93,4 @@ class ValidadorCantidad
 
         return ['cantidad' => self::entero($cantidad), 'error' => null];
     }
-
-    public static function descontar($stock, $cantidad, $nombre = 'Producto'): array
-    {
-        $error = self::mensaje($cantidad, $stock, $nombre);
-
-        if ($error !== null) {
-            return ['stock' => self::entero($stock), 'error' => $error];
-        }
-
-        return [
-            'stock' => self::entero($stock) - self::entero($cantidad),
-            'error' => null,
-        ];
-    }
 }

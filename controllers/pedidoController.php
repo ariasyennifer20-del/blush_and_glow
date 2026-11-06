@@ -7,6 +7,7 @@ require_once __DIR__ . '/../models/ValidadorCantidad.php';
 require_once __DIR__ . '/../models/AccesoPedido.php';
 require_once __DIR__ . '/../models/TokenFormulario.php';
 require_once __DIR__ . '/../models/CarritoPrecios.php';
+require_once __DIR__ . '/../models/CarritoModel.php';
 
 class PedidoController {
 
@@ -15,6 +16,15 @@ class PedidoController {
     public function __construct() {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
+        }
+        if (!isset($_SESSION['carrito'])) {
+            $_SESSION['carrito'] = [];
+        }
+        if (isset($_SESSION['usuario']) && empty($_SESSION['carrito'])) {
+            $usuarioId = $_SESSION['usuario']['usuario_id'] ?? $_SESSION['usuario']['id'] ?? null;
+            if ($usuarioId) {
+                $_SESSION['carrito'] = (new CarritoModel())->cargar($usuarioId);
+            }
         }
         $this->db = Database::getConnection();
     }
@@ -119,7 +129,7 @@ class PedidoController {
                 $this->db->beginTransaction();
 
                 // 1. Insertar el encabezado del pedido
-                $sqlPedido = "INSERT INTO pedidos (usuario_id, total, estado, direccion_envio, fecha_pedido) VALUES (:usuario_id, :total, 'pagado', :direccion_envio, NOW())";
+                $sqlPedido = "INSERT INTO pedidos (usuario_id, total, estado, direccion_envio, fecha_pedido) VALUES (:usuario_id, :total, 'pendiente', :direccion_envio, NOW())";
                 $stmtPedido = $this->db->prepare($sqlPedido);
                 $stmtPedido->execute([
                     ':usuario_id'       => $usuarioId,
@@ -170,8 +180,9 @@ class PedidoController {
                 // Confirmar la transacción
                 $this->db->commit();
 
-                // Vaciar el carrito de la sesión
-                unset($_SESSION['carrito']);
+                // Vaciar el carrito de la sesión y el guardado en base de datos
+                $_SESSION['carrito'] = [];
+                (new CarritoModel())->reemplazar($usuarioId, []);
 
                 // Redirigir a la vista de confirmación
                 header("Location: index.php?c=pedido&a=confirmacion&id=" . $pedidoId);
@@ -305,12 +316,7 @@ class PedidoController {
             $pageTitle = "Detalle del Pedido #" . $pedidoId;
             
             require_once dirname(__DIR__) . '/views/layout/header.php';
-            // Carga unificada para evitar desajustes de rutas en las vistas de detalle
-            if (file_exists(dirname(__DIR__) . '/views/cliente/pedido/detalle.php')) {
-                require_once dirname(__DIR__) . '/views/cliente/pedido/detalle.php';
-            } else {
-                require_once dirname(__DIR__) . '/views/pedido/detalle.php';
-            }
+            require_once dirname(__DIR__) . '/views/cliente/pedido/detalle.php';
             require_once dirname(__DIR__) . '/views/layout/footer.php';
         } else {
             header("Location: index.php?c=cliente&a=perfil");

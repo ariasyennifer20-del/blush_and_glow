@@ -5,7 +5,5 @@
             <p>Tu espacio digital de belleza y cuidado personal.</p>
         </div>
     </footer>
-
-    <script src="public/js/main.js"></script>
 </body>
 </html>

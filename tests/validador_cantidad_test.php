@@ -16,7 +16,7 @@ function probar($nombre, $condicion) {
 
 $ok = ValidadorCantidad::revisarUnidades(2);
 probar('2 unidades es válida', $ok['valida'] === true && $ok['texto'] === '2 unidades' && $ok['cantidad'] === 2);
-
+ 
 $cero = ValidadorCantidad::revisarUnidades(0);
 probar('0 unidades no es válida', $cero['valida'] === false && $cero['cantidad'] === 0 && $cero['texto'] === 'Cantidad no válida');
 
@@ -55,15 +55,6 @@ probar('sumar una cantidad negativa se rechaza', $sumarNegativa['error'] !== nul
 
 $fijar = ValidadorCantidad::fijar(8, 3, 'Base');
 probar('fijar más unidades que el stock se rechaza', $fijar['error'] !== null && $fijar['cantidad'] === null);
-
-$descontarOk = ValidadorCantidad::descontar(10, 4, 'Máscara');
-probar('descontar deja el stock correcto', $descontarOk['error'] === null && $descontarOk['stock'] === 6);
-
-$descontarMal = ValidadorCantidad::descontar(2, 5, 'Máscara');
-probar('descontar de más no baja el stock', $descontarMal['error'] !== null && $descontarMal['stock'] === 2);
-
-$descontarNegativo = ValidadorCantidad::descontar(8, -2, 'Máscara');
-probar('descontar una cantidad negativa no aumenta el stock', $descontarNegativo['error'] !== null && $descontarNegativo['stock'] === 8);
 
 $detalles = [
     ['producto' => 'Labial', 'precio_unitario' => 10, 'cantidad' => 2, 'imagen_url' => ''],

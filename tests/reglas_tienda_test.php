@@ -5,6 +5,8 @@ require_once __DIR__ . '/../models/AccesoPedido.php';
 require_once __DIR__ . '/../models/TokenFormulario.php';
 require_once __DIR__ . '/../models/ReglasCatalogo.php';
 require_once __DIR__ . '/../models/CarritoPrecios.php';
+require_once __DIR__ . '/../models/CarritoAlmacen.php';
+require_once __DIR__ . '/../models/ReglasPedido.php';
 
 $fallos = 0;
 
@@ -61,15 +63,28 @@ probar(
     && $actualizado['cantidad'] === 2
 );
 
-$pedidoModel = file_get_contents(__DIR__ . '/../models/PedidoModel.php');
+$checkout = file_get_contents(__DIR__ . '/../controllers/pedidoController.php');
 probar(
     'el estado inicial del pedido usa el valor del enum',
-    strpos($pedidoModel, "'pendiente'") !== false && strpos($pedidoModel, "'Pendiente'") === false
+    strpos($checkout, "'pendiente'") !== false && strpos($checkout, "'Pendiente'") === false
 );
 
 $ficha = file_get_contents(__DIR__ . '/../views/productos/detalle.php');
 probar('la ficha de producto muestra el nombre del producto', strpos($ficha, '$producto[\'nombre\']') !== false);
 probar('la ficha de producto ya no es un detalle de pedido', strpos($ficha, 'Detalle del Pedido') === false);
+
+$fusion = CarritoAlmacen::fusionar(
+    [1 => ['producto_id' => 1, 'cantidad' => 1, 'nombre' => 'Labial']],
+    [1 => ['producto_id' => 1, 'cantidad' => 2, 'nombre' => 'Labial'], 3 => ['producto_id' => 3, 'cantidad' => 1, 'nombre' => 'Sérum']]
+);
+probar('el carrito guardado se suma al de la sesión', $fusion[1]['cantidad'] === 3 && $fusion[3]['cantidad'] === 1);
+
+probar('un pedido pendiente no cuenta como ingreso', ReglasPedido::cuentaComoIngreso('pendiente') === false);
+probar('un pedido pagado cuenta como ingreso', ReglasPedido::cuentaComoIngreso('pagado') === true);
+probar('cancelar un pedido devuelve el stock', ReglasPedido::movimientoStock('pendiente', 'cancelado') === 'devolver');
+probar('reactivar un pedido descuenta el stock', ReglasPedido::movimientoStock('cancelado', 'pagado') === 'descontar');
+probar('pasar de pendiente a pagado no mueve el stock otra vez', ReglasPedido::movimientoStock('pendiente', 'pagado') === 'ninguno');
+probar('el estado con mayúscula no es válido', ReglasPedido::esEstadoValido('Pendiente') === false);
 
 echo $fallos === 0
     ? "\nTodas las pruebas pasaron.\n"

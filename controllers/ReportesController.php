@@ -2,7 +2,8 @@
 // controllers/ReportesController.php
 
 require_once __DIR__ . '/../models/ProductoModel.php';
-require_once __DIR__ . '/../models/PedidoModel.php'; // 1. Importar el modelo de pedidos
+require_once __DIR__ . '/../models/PedidoModel.php';
+require_once __DIR__ . '/../models/ReglasPedido.php';
 
 class ReportesController {
 
@@ -28,19 +29,23 @@ class ReportesController {
         // 3. Calcular métricas reales basadas en los pedidos de la base de datos
         $totalIngresos = 0;
         $totalPedidos = count($ventasRecientes);
+        $pedidosCobrados = 0;
         $totalUnidades = 0;
 
         foreach ($ventasRecientes as $pedido) {
+            if (!ReglasPedido::cuentaComoIngreso($pedido['estado'])) {
+                continue;
+            }
+
+            $pedidosCobrados++;
             $totalIngresos += $pedido['total'];
-            
-            // Opcional: Si quieres sumar las unidades de los productos de cada pedido
             $detalles = $pedidoModel->obtenerDetallePedido($pedido['pedido_id']);
             foreach ($detalles as $detalle) {
                 $totalUnidades += $detalle['cantidad'];
             }
         }
 
-        $ticketPromedio = $totalPedidos > 0 ? ($totalIngresos / $totalPedidos) : 0;
+        $ticketPromedio = $pedidosCobrados > 0 ? ($totalIngresos / $pedidosCobrados) : 0;
 
         // Estructura de métricas con datos reales
         $metricas = [

@@ -3,6 +3,7 @@
 
 require_once __DIR__ . '/../models/ProductoModel.php';
 require_once __DIR__ . '/../models/ValidadorCantidad.php';
+require_once __DIR__ . '/../models/CarritoModel.php';
 
 class CarritoController {
 
@@ -16,6 +17,30 @@ class CarritoController {
         if (!isset($_SESSION['carrito'])) {
             $_SESSION['carrito'] = [];
         }
+
+        $this->hidratar();
+    }
+
+    private function usuarioId() {
+        return $_SESSION['usuario']['usuario_id'] ?? $_SESSION['usuario']['id'] ?? null;
+    }
+
+    private function hidratar() {
+        $usuarioId = $this->usuarioId();
+        if (!$usuarioId || !empty($_SESSION['carrito'])) {
+            return;
+        }
+
+        $_SESSION['carrito'] = (new CarritoModel())->cargar($usuarioId);
+    }
+
+    private function sincronizar() {
+        $usuarioId = $this->usuarioId();
+        if (!$usuarioId) {
+            return;
+        }
+
+        (new CarritoModel())->reemplazar($usuarioId, $_SESSION['carrito']);
     }
 
     // Vista principal del carrito de compras
@@ -56,6 +81,11 @@ class CarritoController {
 
     // Agregar un producto al carrito
     public function agregar() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: index.php?c=producto&a=catalogo");
+            exit();
+        }
+
         $productoId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
         $cantidad = isset($_POST['cantidad']) ? $_POST['cantidad'] : 1;
 
@@ -86,7 +116,7 @@ class CarritoController {
             }
         }
 
-        // Redireccionar a la vista del carrito
+        $this->sincronizar();
         header("Location: index.php?c=carrito&a=ver");
         exit();
     }
@@ -124,25 +154,38 @@ class CarritoController {
             }
         }
 
+        $this->sincronizar();
         header("Location: index.php?c=carrito&a=ver");
         exit();
     }
 
     // Eliminar un producto del carrito
     public function eliminar() {
-        $productoId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: index.php?c=carrito&a=ver");
+            exit();
+        }
+
+        $productoId = isset($_POST['id']) ? (int)$_POST['id'] : 0;
 
         if ($productoId > 0 && isset($_SESSION['carrito'][$productoId])) {
             unset($_SESSION['carrito'][$productoId]);
         }
 
+        $this->sincronizar();
         header("Location: index.php?c=carrito&a=ver");
         exit();
     }
 
     // Vaciar todo el carrito
     public function vaciar() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: index.php?c=carrito&a=ver");
+            exit();
+        }
+
         $_SESSION['carrito'] = [];
+        $this->sincronizar();
         header("Location: index.php?c=carrito&a=ver");
         exit();
     }

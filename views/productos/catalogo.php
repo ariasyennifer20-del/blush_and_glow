@@ -80,9 +80,10 @@
                             
                             <div class="price-action">
                                 <span class="price">$<?php echo number_format($producto['precio'], 2); ?></span>
-                                <a href="index.php?c=carrito&a=agregar&id=<?php echo $producto['producto_id']; ?>" class="btn-secondary">
-                                    Añadir al Carrito
-                                </a>
+                                <form action="index.php?c=carrito&a=agregar&id=<?php echo (int) $producto['producto_id']; ?>" method="POST">
+                                    <input type="hidden" name="cantidad" value="1">
+                                    <button type="submit" class="btn-secondary">Añadir al Carrito</button>
+                                </form>
                             </div>
                         </article>
                     <?php endforeach; ?>

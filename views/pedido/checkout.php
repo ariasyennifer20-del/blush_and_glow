@@ -61,7 +61,7 @@
                                 </div>
                                 
                                 <button type="submit" class="btn w-100 text-white rounded-pill py-2 fw-semibold shadow-sm mt-3" style="background-color: #d4a373; border: none; transition: opacity 0.2s;">
-                                    Confirmar y Pagar
+                                    Confirmar pedido
                                 </button>
                             </form>
                         </div>
