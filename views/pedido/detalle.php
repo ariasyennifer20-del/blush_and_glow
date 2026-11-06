@@ -94,27 +94,18 @@
 
                                     // Obtener cantidad y precio del producto
 
-                                    $cantidad = isset($detalle['cantidad'])
+                                    $revision = ValidadorCantidad::revisarUnidades($detalle['cantidad'] ?? null);
 
-                                        ? (int)$detalle['cantidad'] : 0;
+                                    $cantidad = $revision['cantidad'];
 
+                                    $precio = (float) $detalle['precio_unitario'];
 
+                                    $subtotal = $revision['valida'] ? $precio * $cantidad : 0;
 
-                                    $precio = (float)$detalle['precio_unitario'];
-
-
-
-                                    // Calcular subtotal
-
-                                    $subtotal = $precio * $cantidad;
-
-
-
-                                    // Sumar unidades y total del pedido
-
-                                    $totalUnidades += $cantidad;
-
-                                    $totalPedido += $subtotal;
+                                    if ($revision['valida']) {
+                                        $totalUnidades += $cantidad;
+                                        $totalPedido += $subtotal;
+                                    }
 
                                     ?>
 
@@ -168,11 +159,7 @@
 
                                         <td class="text-center">
 
-                                         <span class="badge bg-light text-dark border px-3 py-2 rounded-pill fw-bold">
-
-        <?= (int)$detalle['cantidad'] ?>  unidades
-
-    </span>
+                                         <span class="cantidad-unidades px-3 py-2 rounded-pill fw-bold" style="background:#f8f9fa; color:#212529; border:1px solid #dee2e6;"><?= (int) ($detalle['cantidad'] ?? 0) ?></span>
 
 </td>
 

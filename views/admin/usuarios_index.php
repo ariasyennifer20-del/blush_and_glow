@@ -1,5 +1,9 @@
 <!-- views/admin/usuarios_index.php -->
 <main class="catalog-container">
+    <?php if (!empty($_SESSION['flash_error'])): ?>
+        <p style="background:#f8d7da; color:#721c24; padding:0.8rem 1rem; border-radius:6px;"><?php echo htmlspecialchars($_SESSION['flash_error']); ?></p>
+        <?php unset($_SESSION['flash_error']); ?>
+    <?php endif; ?>
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
         <h2>Gestión de Clientes y Usuarios</h2>
         <a href="index.php?c=adminUsuario&a=crear" class="btn-primary">+ Nuevo Usuario</a>

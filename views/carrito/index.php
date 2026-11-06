@@ -2,6 +2,14 @@
 <main class="catalog-container">
     <h2>Tu Carrito de Compras</h2>
 
+    <?php if (!empty($mensajes)): ?>
+        <div style="background-color: #f8d7da; color: #721c24; padding: 0.8rem 1rem; border-radius: 6px; margin-top: 1rem;">
+            <?php foreach ($mensajes as $mensaje): ?>
+                <p style="margin: 0.2rem 0;"><?php echo htmlspecialchars($mensaje); ?></p>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
+
     <?php if (!empty($carrito)): ?>
         <div class="cart-layout" style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; margin-top: 2rem;">
             
@@ -31,7 +39,7 @@
                                 <td style="padding: 1rem;">
                                     <form action="index.php?c=carrito&a=actualizar" method="POST" style="display: flex; gap: 0.5rem;">
                                         <input type="hidden" name="id" value="<?php echo $item['producto_id']; ?>">
-                                        <input type="number" name="cantidad" value="<?php echo $item['cantidad']; ?>" min="1" style="width: 50px; padding: 0.3rem; border: 1px solid #ccc; border-radius: 4px;">
+                                        <input type="number" name="cantidad" value="<?php echo (int) $item['cantidad']; ?>" min="1" max="<?php echo (int) ($item['stock_actual'] ?? 1); ?>" style="width: 60px; padding: 0.3rem; border: 1px solid #ccc; border-radius: 4px;">
                                         <button type="submit" class="btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;">Actualizar</button>
                                     </form>
                                 </td>

@@ -2,6 +2,13 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+
+// Carpeta pública del proyecto, sin depender del nombre BLUSH_AND_GLOW.
+$scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
+$basePath = rtrim($scriptDir, '/');
+if ($basePath === '/' || $basePath === '.') {
+    $basePath = '';
+}
 ?>
 <!DOCTYPE html>
 <html lang="es">
@@ -11,7 +18,7 @@ if (session_status() === PHP_SESSION_NONE) {
     <title><?php echo isset($pageTitle) ? $pageTitle : 'Blush & Glow'; ?></title>
     <!-- Incluyendo Bootstrap 5 para que las vistas (como el checkout) se adapten y se vean profesionales -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/BLUSH_AND_GLOW/public/css/styles.css">
+    <link rel="stylesheet" href="<?php echo htmlspecialchars($basePath, ENT_QUOTES, 'UTF-8'); ?>/public/css/styles.css">
 </head>
 <body>
 
@@ -24,6 +31,7 @@ if (session_status() === PHP_SESSION_NONE) {
             <ul class="nav-links">
                 <li><a href="index.php">Inicio</a></li>
                 <li><a href="index.php?c=producto&a=catalogo">Catálogo</a></li>
+                <li><a href="index.php?c=carrito&a=ver">Carrito</a></li>
                 <li><a href="index.php?c=producto&a=categoria&id=1">Maquillaje</a></li>
                 <li><a href="index.php?c=producto&a=categoria&id=2">Skincare</a></li>
                 <li><a href="index.php?c=usuario&a=quienesSomos">Quiénes somos</a></li>

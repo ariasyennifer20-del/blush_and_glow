@@ -26,6 +26,16 @@ class PedidoModel {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    public function obtenerPorId($pedidoId) {
+        $sql = "SELECT pedido_id, usuario_id, total, estado, direccion_envio, fecha_pedido
+                FROM pedidos
+                WHERE pedido_id = :id
+                LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':id' => $pedidoId]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
     // Obtener detalles del pedido con productos y subtotales
     public function obtenerDetallePedido($pedidoId) {
         $sql = "SELECT
@@ -52,7 +62,7 @@ class PedidoModel {
         $sql = "INSERT INTO pedidos
                 (usuario_id, total, estado, direccion_envio, fecha_pedido)
                 VALUES
-                (:usuario_id, :total, 'Pendiente', :direccion_envio, NOW())";
+                (:usuario_id, :total, 'pendiente', :direccion_envio, NOW())";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([

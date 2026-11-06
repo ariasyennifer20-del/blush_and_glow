@@ -2,6 +2,7 @@
 // controllers/CarritoController.php
 
 require_once __DIR__ . '/../models/ProductoModel.php';
+require_once __DIR__ . '/../models/ValidadorCantidad.php';
 
 class CarritoController {
 
@@ -20,6 +21,31 @@ class CarritoController {
     // Vista principal del carrito de compras
     public function ver() {
         $carrito = $_SESSION['carrito'];
+        $mensajes = [];
+
+        if (!empty($_SESSION['flash_error'])) {
+            $mensajes[] = $_SESSION['flash_error'];
+            unset($_SESSION['flash_error']);
+        }
+
+        $productoModel = new ProductoModel();
+        foreach ($carrito as $id => $item) {
+            $producto = $productoModel->obtenerPorId($item['producto_id']);
+            $nombre = $item['nombre'] ?? 'Producto';
+
+            if (!$producto) {
+                $mensajes[] = '"' . $nombre . '" ya no está disponible.';
+                $carrito[$id]['stock_actual'] = 0;
+                continue;
+            }
+
+            $carrito[$id]['stock_actual'] = (int) $producto['stock'];
+            $alerta = ValidadorCantidad::mensaje($item['cantidad'], $producto['stock'], $producto['nombre']);
+            if ($alerta !== null && !in_array($alerta, $mensajes, true)) {
+                $mensajes[] = $alerta;
+            }
+        }
+
         $total = $this->calcularTotal();
         $pageTitle = "Carrito de Compras | Blush & Glow";
 
@@ -31,24 +57,30 @@ class CarritoController {
     // Agregar un producto al carrito
     public function agregar() {
         $productoId = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-        $cantidad = isset($_POST['cantidad']) ? (int)$_POST['cantidad'] : 1;
+        $cantidad = isset($_POST['cantidad']) ? $_POST['cantidad'] : 1;
 
         if ($productoId > 0) {
             $productoModel = new ProductoModel();
             $producto = $productoModel->obtenerPorId($productoId);
 
             if ($producto) {
-                // Si el producto ya existe en el carrito, se suma la cantidad
-                if (isset($_SESSION['carrito'][$productoId])) {
-                    $_SESSION['carrito'][$productoId]['cantidad'] += $cantidad;
+                $actual = $_SESSION['carrito'][$productoId]['cantidad'] ?? 0;
+                $resultado = ValidadorCantidad::sumar(
+                    $actual,
+                    $cantidad,
+                    $producto['stock'],
+                    $producto['nombre']
+                );
+
+                if ($resultado['error'] !== null) {
+                    $_SESSION['flash_error'] = $resultado['error'];
                 } else {
-                    // Si es nuevo, se agrega con sus datos básicos
                     $_SESSION['carrito'][$productoId] = [
                         'producto_id' => $producto['producto_id'],
                         'nombre'      => $producto['nombre'],
                         'precio'      => $producto['precio'],
                         'imagen_url'  => $producto['imagen_url'],
-                        'cantidad'    => $cantidad
+                        'cantidad'    => $resultado['cantidad']
                     ];
                 }
             }
@@ -63,14 +95,31 @@ class CarritoController {
     public function actualizar() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $productoId = isset($_POST['id']) ? (int)$_POST['id'] : 0;
-            $nuevaCantidad = isset($_POST['cantidad']) ? (int)$_POST['cantidad'] : 1;
+            $nuevaCantidad = $_POST['cantidad'] ?? 1;
 
             if ($productoId > 0 && isset($_SESSION['carrito'][$productoId])) {
-                if ($nuevaCantidad > 0) {
-                    $_SESSION['carrito'][$productoId]['cantidad'] = $nuevaCantidad;
-                } else {
-                    // Si la cantidad es 0 o menor, se remueve el producto
+                if (ValidadorCantidad::entero($nuevaCantidad) < 1) {
                     unset($_SESSION['carrito'][$productoId]);
+                } else {
+                    $productoModel = new ProductoModel();
+                    $producto = $productoModel->obtenerPorId($productoId);
+                    $nombre = $_SESSION['carrito'][$productoId]['nombre'] ?? 'Producto';
+
+                    if (!$producto) {
+                        $_SESSION['flash_error'] = '"' . $nombre . '" ya no está disponible.';
+                    } else {
+                        $resultado = ValidadorCantidad::fijar(
+                            $nuevaCantidad,
+                            $producto['stock'],
+                            $producto['nombre']
+                        );
+
+                        if ($resultado['error'] !== null) {
+                            $_SESSION['flash_error'] = $resultado['error'];
+                        } else {
+                            $_SESSION['carrito'][$productoId]['cantidad'] = $resultado['cantidad'];
+                        }
+                    }
                 }
             }
         }

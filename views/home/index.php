@@ -25,7 +25,7 @@
     // Comprobar si la columna imagen_url es una URL completa o una ruta local
     $imagenSrc = filter_var($producto['imagen_url'], FILTER_VALIDATE_URL) 
         ? $producto['imagen_url'] 
-        : '/BLUSH_AND_GLOW/public/img/' . $producto['imagen_url'];
+        : $basePath . '/public/img/' . $producto['imagen_url'];
 ?>
 
 <img src="<?php echo htmlspecialchars($imagenSrc); ?>" 
