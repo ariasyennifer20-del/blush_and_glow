@@ -2,6 +2,7 @@
 // models/ProductoModel.php
 
 require_once __DIR__ . '/../config/Database.php';
+require_once __DIR__ . '/ReglasCatalogo.php';
 
 class ProductoModel {
     private $db;
@@ -92,28 +93,16 @@ class ProductoModel {
         ]);
     }
 
-    // Eliminar producto y su historial asociado de forma segura mediante transacción
+    // No borra el historial de pedidos. Si el producto ya se vendió, se conserva.
     public function eliminar($id) {
-        try {
-            // Iniciar transacción de base de datos
-            $this->db->beginTransaction();
+        $stmtDetalle = $this->db->prepare("SELECT COUNT(*) FROM detalle_pedidos WHERE producto_id = :id");
+        $stmtDetalle->execute([':id' => $id]);
 
-            // 1. Eliminar primero las referencias del producto en el detalle de pedidos
-            $stmtDetalle = $this->db->prepare("DELETE FROM detalle_pedidos WHERE producto_id = :id");
-            $stmtDetalle->execute([':id' => $id]);
-
-            // 2. Eliminar el producto de la tabla principal
-            $stmtProd = $this->db->prepare("DELETE FROM productos WHERE producto_id = :id");
-            $stmtProd->execute([':id' => $id]);
-
-            // Confirmar transacción exitosa
-            $this->db->commit();
-            return true;
-
-        } catch (Exception $e) {
-            // Revertir cambios en caso de error
-            $this->db->rollBack();
-            throw new Exception("No se pudo eliminar el producto: " . $e->getMessage());
+        if (!ReglasCatalogo::puedeEliminarProducto($stmtDetalle->fetchColumn())) {
+            throw new Exception("No se puede eliminar el producto porque aparece en pedidos.");
         }
+
+        $stmtProd = $this->db->prepare("DELETE FROM productos WHERE producto_id = :id");
+        return $stmtProd->execute([':id' => $id]);
     }
 }

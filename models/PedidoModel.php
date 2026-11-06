@@ -2,6 +2,7 @@
 // models/PedidoModel.php
 
 require_once __DIR__ . '/../config/Database.php';
+require_once __DIR__ . '/ReglasPedido.php';
 
 class PedidoModel {
 
@@ -26,6 +27,16 @@ class PedidoModel {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    public function obtenerPorId($pedidoId) {
+        $sql = "SELECT pedido_id, usuario_id, total, estado, direccion_envio, fecha_pedido
+                FROM pedidos
+                WHERE pedido_id = :id
+                LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':id' => $pedidoId]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+
     // Obtener detalles del pedido con productos y subtotales
     public function obtenerDetallePedido($pedidoId) {
         $sql = "SELECT
@@ -45,46 +56,6 @@ class PedidoModel {
         ]);
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    // Registrar un nuevo pedido
-    public function crearPedido($usuarioId, $total, $direccionEnvio) {
-        $sql = "INSERT INTO pedidos
-                (usuario_id, total, estado, direccion_envio, fecha_pedido)
-                VALUES
-                (:usuario_id, :total, 'Pendiente', :direccion_envio, NOW())";
-
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([
-            ':usuario_id' => $usuarioId,
-            ':total' => $total,
-            ':direccion_envio' => $direccionEnvio
-        ]);
-
-        return $this->db->lastInsertId();
-    }
-
-    // Registrar los productos y sus cantidades en el detalle del pedido
-    public function registrarDetallePedido($pedidoId, $productoId, $precioUnitario, $cantidad) {
-        $cantidad = (int) $cantidad;
-
-        if ($cantidad < 1) {
-            throw new InvalidArgumentException("La cantidad debe ser mayor a cero.");
-        }
-
-        $sql = "INSERT INTO detalle_pedidos
-                (pedido_id, producto_id, precio_unitario, cantidad)
-                VALUES
-                (:pedido_id, :producto_id, :precio_unitario, :cantidad)";
-
-        $stmt = $this->db->prepare($sql);
-
-        return $stmt->execute([
-            ':pedido_id' => $pedidoId,
-            ':producto_id' => $productoId,
-            ':precio_unitario' => $precioUnitario,
-            ':cantidad' => $cantidad
-        ]);
     }
 
     // Obtener TODOS los pedidos para el administrador
@@ -107,50 +78,70 @@ class PedidoModel {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    // Actualizar el estado del pedido
+    // Actualizar el estado del pedido y ajustar el stock si se cancela o se reactiva
     public function actualizarEstado($pedidoId, $nuevoEstado) {
-        $sql = "UPDATE pedidos
-                SET estado = :estado
-                WHERE pedido_id = :id";
+        if (!ReglasPedido::esEstadoValido($nuevoEstado)) {
+            throw new InvalidArgumentException("Estado no válido.");
+        }
 
-        $stmt = $this->db->prepare($sql);
+        $this->db->beginTransaction();
 
-        return $stmt->execute([
-            ':estado' => $nuevoEstado,
-            ':id' => $pedidoId
-        ]);
-    }
-
-    // Eliminar un pedido y sus detalles asociados de forma segura
-    public function eliminarPedido($pedidoId) {
         try {
-            $this->db->beginTransaction();
+            $stmtActual = $this->db->prepare("SELECT estado FROM pedidos WHERE pedido_id = :id FOR UPDATE");
+            $stmtActual->execute([':id' => $pedidoId]);
+            $estadoActual = $stmtActual->fetchColumn();
 
-            // Eliminar detalles del pedido
-            $stmtDetalle = $this->db->prepare(
-                "DELETE FROM detalle_pedidos WHERE pedido_id = ?"
-            );
-            $stmtDetalle->execute([$pedidoId]);
+            if ($estadoActual === false) {
+                throw new RuntimeException("El pedido no existe.");
+            }
 
-            // Eliminar pedido principal
-            $stmtPedido = $this->db->prepare(
-                "DELETE FROM pedidos WHERE pedido_id = ?"
-            );
-            $stmtPedido->execute([$pedidoId]);
+            $movimiento = ReglasPedido::movimientoStock($estadoActual, $nuevoEstado);
+            if ($movimiento === 'devolver') {
+                $this->ajustarStockDelPedido($pedidoId, 1);
+            } elseif ($movimiento === 'descontar') {
+                $this->ajustarStockDelPedido($pedidoId, -1);
+            }
+
+            $stmt = $this->db->prepare("UPDATE pedidos SET estado = :estado WHERE pedido_id = :id");
+            $stmt->execute([
+                ':estado' => $nuevoEstado,
+                ':id' => $pedidoId
+            ]);
 
             $this->db->commit();
-
             return true;
-
         } catch (Exception $e) {
             if ($this->db->inTransaction()) {
                 $this->db->rollBack();
             }
-
-            throw new Exception(
-                "No se pudo eliminar el pedido: " . $e->getMessage()
-            );
+            throw $e;
         }
     }
+
+    private function ajustarStockDelPedido($pedidoId, $signo) {
+        $stmtLineas = $this->db->prepare(
+            "SELECT producto_id, cantidad FROM detalle_pedidos WHERE pedido_id = :id"
+        );
+        $stmtLineas->execute([':id' => $pedidoId]);
+        $lineas = $stmtLineas->fetchAll();
+
+        if ($signo < 0) {
+            $sql = "UPDATE productos SET stock = stock - :cantidad WHERE producto_id = :producto_id AND stock >= :cantidad";
+        } else {
+            $sql = "UPDATE productos SET stock = stock + :cantidad WHERE producto_id = :producto_id";
+        }
+        $stmt = $this->db->prepare($sql);
+
+        foreach ($lineas as $linea) {
+            $stmt->execute([
+                ':cantidad' => (int) $linea['cantidad'],
+                ':producto_id' => $linea['producto_id'],
+            ]);
+            if ($signo < 0 && $stmt->rowCount() !== 1) {
+                throw new RuntimeException("No hay stock suficiente para reactivar el pedido.");
+            }
+        }
+    }
+
 }
 ?>

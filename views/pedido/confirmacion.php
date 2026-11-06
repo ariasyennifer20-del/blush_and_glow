@@ -8,9 +8,9 @@
                     </div>
                 </div>
                 
-                <h2 class="fw-bold mb-2" style="color: #333;">¡Compra Realizada con Éxito!</h2>
+                <h2 class="fw-bold mb-2" style="color: #333;">Pedido registrado</h2>
                 <p class="text-muted mb-4">
-                    Tu pedido ha sido procesado correctamente y el inventario ha sido actualizado. Gracias por confiar en <strong>Blush & Glow</strong>.
+                    Tu pedido quedó <strong>pendiente</strong> y el inventario se reservó. El pago se confirma cuando el pedido pase a pagado. Gracias por confiar en <strong>Blush & Glow</strong>.
                 </p>
 
                 <?php $pedidoId = $_GET['id'] ?? ''; ?>

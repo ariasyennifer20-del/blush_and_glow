@@ -8,7 +8,7 @@
                 </div>
 
                 <?php if (isset($error)): ?>
-                    <div class="alert alert-danger rounded-3"><?php echo $error; ?></div>
+                    <div class="alert alert-danger rounded-3"><?php echo htmlspecialchars($error); ?></div>
                 <?php endif; ?>
 
                 <div class="row g-4 align-items-start">
@@ -30,7 +30,7 @@
                                         <?php 
                                             $nombre = $item['nombre'] ?? 'Producto';
                                             $precio = $item['precio'] ?? $item['valor'] ?? 0;
-                                            $cant   = $item['cantidad'] ?? $item['qty'] ?? 1;
+                                            $cant = (int) ($item['cantidad'] ?? $item['qty'] ?? 0);
                                         ?>
                                         <tr>
                                             <td class="fw-medium"><?php echo htmlspecialchars($nombre); ?></td>
@@ -54,13 +54,14 @@
                             <h5 class="fw-semibold mb-3" style="color: #444;">Detalles de Envío</h5>
                             
                             <form action="index.php?c=pedido&a=procesar" method="POST">
+                                <input type="hidden" name="checkout_token" value="<?php echo htmlspecialchars($checkoutToken ?? '', ENT_QUOTES, 'UTF-8'); ?>">
                                 <div class="mb-3">
                                     <label for="direccion_envio" class="form-label text-secondary small fw-bold">Dirección de entrega *</label>
                                     <textarea name="direccion_envio" id="direccion_envio" class="form-control rounded-3 py-2" rows="3" required placeholder="Ej: Calle 10 # 20-30, Barrio..."></textarea>
                                 </div>
                                 
                                 <button type="submit" class="btn w-100 text-white rounded-pill py-2 fw-semibold shadow-sm mt-3" style="background-color: #d4a373; border: none; transition: opacity 0.2s;">
-                                    Confirmar y Pagar
+                                    Confirmar pedido
                                 </button>
                             </form>
                         </div>

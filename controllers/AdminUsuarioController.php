@@ -92,9 +92,14 @@ class AdminUsuarioController {
     public function eliminar() {
         $id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
         
-        // Evitar que el admin activo se elimine a sí mismo
-        if ($id > 0 && $id !== (int)$_SESSION['usuario']['id']) {
-            $this->usuarioModel->eliminar($id);
+        $miId = (int) ($_SESSION['usuario']['usuario_id'] ?? $_SESSION['usuario']['id'] ?? 0);
+
+        if ($id > 0 && $id !== $miId) {
+            try {
+                $this->usuarioModel->eliminar($id);
+            } catch (Exception $e) {
+                $_SESSION['flash_error'] = $e->getMessage();
+            }
         }
 
         header("Location: index.php?c=adminUsuario&a=index");

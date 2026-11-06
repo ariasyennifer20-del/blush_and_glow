@@ -2,6 +2,14 @@
 <main class="catalog-container">
     <h2>Tu Carrito de Compras</h2>
 
+    <?php if (!empty($mensajes)): ?>
+        <div style="background-color: #f8d7da; color: #721c24; padding: 0.8rem 1rem; border-radius: 6px; margin-top: 1rem;">
+            <?php foreach ($mensajes as $mensaje): ?>
+                <p style="margin: 0.2rem 0;"><?php echo htmlspecialchars($mensaje); ?></p>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
+
     <?php if (!empty($carrito)): ?>
         <div class="cart-layout" style="display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; margin-top: 2rem;">
             
@@ -21,7 +29,12 @@
                         <?php foreach ($carrito as $item): ?>
                             <tr style="border-bottom: 1px solid #eee;">
                                 <td style="padding: 1rem; display: flex; align-items: center; gap: 1rem;">
-                                    <img src="public/img/<?php echo htmlspecialchars($item['imagen_url']); ?>" 
+                                    <?php
+                                        $imagenSrc = filter_var($item['imagen_url'], FILTER_VALIDATE_URL)
+                                            ? $item['imagen_url']
+                                            : ($basePath ?? '') . '/public/img/' . $item['imagen_url'];
+                                    ?>
+                                    <img src="<?php echo htmlspecialchars($imagenSrc); ?>" 
                                          alt="<?php echo htmlspecialchars($item['nombre']); ?>" 
                                          style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px;"
                                          onerror="this.src='https://via.placeholder.com/50';">
@@ -31,7 +44,7 @@
                                 <td style="padding: 1rem;">
                                     <form action="index.php?c=carrito&a=actualizar" method="POST" style="display: flex; gap: 0.5rem;">
                                         <input type="hidden" name="id" value="<?php echo $item['producto_id']; ?>">
-                                        <input type="number" name="cantidad" value="<?php echo $item['cantidad']; ?>" min="1" style="width: 50px; padding: 0.3rem; border: 1px solid #ccc; border-radius: 4px;">
+                                        <input type="number" name="cantidad" value="<?php echo (int) $item['cantidad']; ?>" min="1" max="<?php echo (int) ($item['stock_actual'] ?? 1); ?>" style="width: 60px; padding: 0.3rem; border: 1px solid #ccc; border-radius: 4px;">
                                         <button type="submit" class="btn-secondary" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;">Actualizar</button>
                                     </form>
                                 </td>
@@ -39,8 +52,10 @@
                                     $<?php echo number_format($item['precio'] * $item['cantidad'], 2); ?>
                                 </td>
                                 <td style="padding: 1rem;">
-                                    <a href="index.php?c=carrito&a=eliminar&id=<?php echo $item['producto_id']; ?>" 
-                                       style="color: #d9534f; text-decoration: none; font-weight: bold;">Quitar</a>
+                                    <form action="index.php?c=carrito&a=eliminar" method="POST">
+                                        <input type="hidden" name="id" value="<?php echo (int) $item['producto_id']; ?>">
+                                        <button type="submit" style="background:none; border:none; color:#d9534f; font-weight:bold; cursor:pointer; padding:0;">Quitar</button>
+                                    </form>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -48,7 +63,9 @@
                 </table>
 
                 <div style="margin-top: 1.5rem; text-align: left;">
-                    <a href="index.php?c=carrito&a=vaciar" class="btn-secondary" style="color: #d9534f; border-color: #d9534f;">Vaciar Carrito</a>
+                    <form action="index.php?c=carrito&a=vaciar" method="POST">
+                        <button type="submit" class="btn-secondary" style="color: #d9534f; border-color: #d9534f;">Vaciar Carrito</button>
+                    </form>
                 </div>
             </section>
 

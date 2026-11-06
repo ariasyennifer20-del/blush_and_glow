@@ -1,7 +1,8 @@
 <?php
 // controllers/AdminController.php
 
-require_once __DIR__ . '/../models/PedidoModel.php'; // 1. Importar el modelo de pedidos
+require_once __DIR__ . '/../models/PedidoModel.php';
+require_once __DIR__ . '/../models/ReglasPedido.php';
 
 class AdminController {
 
@@ -27,6 +28,28 @@ class AdminController {
         require_once __DIR__ . '/../views/layout/header.php';
         require_once __DIR__ . '/../views/admin/dashboard.php';
         require_once __DIR__ . '/../views/layout/footer.php';
+    }
+
+    public function estado() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            header("Location: index.php?c=admin&a=index");
+            exit();
+        }
+
+        $pedidoId = (int) ($_POST['pedido_id'] ?? 0);
+        $estado = $_POST['estado'] ?? '';
+
+        try {
+            if ($pedidoId < 1 || !ReglasPedido::esEstadoValido($estado)) {
+                throw new InvalidArgumentException("Estado no válido.");
+            }
+            (new PedidoModel())->actualizarEstado($pedidoId, $estado);
+        } catch (Exception $e) {
+            $_SESSION['flash_error'] = $e->getMessage();
+        }
+
+        header("Location: index.php?c=admin&a=index");
+        exit();
     }
 
     // Vista del Plan de Administración

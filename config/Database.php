@@ -22,8 +22,8 @@ class Database {
 
                 self::$conn = new PDO($dsn, self::$username, self::$password, $options);
             } catch (PDOException $e) {
-                // En producción, guardar el error en log y mostrar un mensaje genérico
-                die("Error de conexión a la base de datos: " . $e->getMessage());
+                error_log($e->getMessage());
+                die("No se pudo conectar con la base de datos. Inténtalo más tarde.");
             }
         }
 

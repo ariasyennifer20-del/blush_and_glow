@@ -2,6 +2,7 @@
 // models/UsuarioModel.php
 
 require_once __DIR__ . '/../config/Database.php';
+require_once __DIR__ . '/ReglasCatalogo.php';
 
 class UsuarioModel {
     private $db;
@@ -95,6 +96,18 @@ class UsuarioModel {
         
         $stmt = $this->db->prepare($sql);
         return $stmt->execute($params);
+    }
+
+    public function eliminar($id) {
+        $stmtPedidos = $this->db->prepare("SELECT COUNT(*) FROM pedidos WHERE usuario_id = :id");
+        $stmtPedidos->execute([':id' => $id]);
+
+        if (!ReglasCatalogo::puedeEliminarUsuario($stmtPedidos->fetchColumn())) {
+            throw new Exception("No se puede eliminar el cliente porque tiene pedidos asociados.");
+        }
+
+        $stmt = $this->db->prepare("DELETE FROM usuarios WHERE usuario_id = :id");
+        return $stmt->execute([':id' => $id]);
     }
 
     // Obtener la lista completa de usuarios/clientes

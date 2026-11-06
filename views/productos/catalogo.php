@@ -59,7 +59,7 @@
     // Comprobar si la columna imagen_url es una URL completa o una ruta local
     $imagenSrc = filter_var($producto['imagen_url'], FILTER_VALIDATE_URL) 
         ? $producto['imagen_url'] 
-        : '/BLUSH_AND_GLOW/public/img/' . $producto['imagen_url'];
+        : $basePath . '/public/img/' . $producto['imagen_url'];
 ?>
 
 <img src="<?php echo htmlspecialchars($imagenSrc); ?>" 
@@ -80,9 +80,10 @@
                             
                             <div class="price-action">
                                 <span class="price">$<?php echo number_format($producto['precio'], 2); ?></span>
-                                <a href="index.php?c=carrito&a=agregar&id=<?php echo $producto['producto_id']; ?>" class="btn-secondary">
-                                    Añadir al Carrito
-                                </a>
+                                <form action="index.php?c=carrito&a=agregar&id=<?php echo (int) $producto['producto_id']; ?>" method="POST">
+                                    <input type="hidden" name="cantidad" value="1">
+                                    <button type="submit" class="btn-secondary">Añadir al Carrito</button>
+                                </form>
                             </div>
                         </article>
                     <?php endforeach; ?>

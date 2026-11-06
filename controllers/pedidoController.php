@@ -3,6 +3,11 @@
 
 require_once __DIR__ . '/../config/Database.php';
 require_once __DIR__ . '/../models/PedidoModel.php';
+require_once __DIR__ . '/../models/ValidadorCantidad.php';
+require_once __DIR__ . '/../models/AccesoPedido.php';
+require_once __DIR__ . '/../models/TokenFormulario.php';
+require_once __DIR__ . '/../models/CarritoPrecios.php';
+require_once __DIR__ . '/../models/CarritoModel.php';
 
 class PedidoController {
 
@@ -11,6 +16,15 @@ class PedidoController {
     public function __construct() {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
+        }
+        if (!isset($_SESSION['carrito'])) {
+            $_SESSION['carrito'] = [];
+        }
+        if (isset($_SESSION['usuario']) && empty($_SESSION['carrito'])) {
+            $usuarioId = $_SESSION['usuario']['usuario_id'] ?? $_SESSION['usuario']['id'] ?? null;
+            if ($usuarioId) {
+                $_SESSION['carrito'] = (new CarritoModel())->cargar($usuarioId);
+            }
         }
         $this->db = Database::getConnection();
     }
@@ -29,37 +43,14 @@ class PedidoController {
             exit();
         }
 
-        // BLOQUEO ESTRICTO EN CHECKOUT
-        foreach ($_SESSION['carrito'] as $item) {
-            $prodId = $item['producto_id'] ?? $item['id'] ?? $item['id_producto'] ?? null;
-            $cant   = $item['cantidad'] ?? $item['qty'] ?? 1;
-
-            if ($prodId) {
-                $stmtCheck = $this->db->prepare("SELECT stock, nombre FROM productos WHERE producto_id = ?");
-                $stmtCheck->execute([$prodId]);
-                $prodDb = $stmtCheck->fetch(PDO::FETCH_ASSOC);
-
-                if ($prodDb) {
-                    if ($cant > $prodDb['stock']) {
-                        header("Location: index.php?c=producto&a=catalogo&error=stock_excedido");
-                        exit();
-                    }
-                }
-            }
+        $errorStock = $this->validarLineasCarrito();
+        if ($errorStock !== null) {
+            $_SESSION['flash_error'] = $errorStock;
+            header("Location: index.php?c=carrito&a=ver");
+            exit();
         }
 
-        $total = 0;
-        foreach ($_SESSION['carrito'] as $item) {
-            $precio = $item['precio'] ?? $item['valor'] ?? 0;
-            $cant   = $item['cantidad'] ?? $item['qty'] ?? 1;
-            $total += $precio * $cant;
-        }
-
-        $pageTitle = "Finalizar Compra | Blush & Glow";
-        
-        require_once dirname(__DIR__) . '/views/layout/header.php';
-        require_once dirname(__DIR__) . '/views/pedido/checkout.php';
-        require_once dirname(__DIR__) . '/views/layout/footer.php';
+        $this->mostrarCheckout();
     }
 
     // Procesar y guardar el pedido en la BD
@@ -70,6 +61,15 @@ class PedidoController {
         }
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $tokenEnviado = $_POST['checkout_token'] ?? '';
+            $tokenGuardado = $_SESSION['checkout_token'] ?? '';
+            unset($_SESSION['checkout_token']);
+
+            if (!TokenFormulario::esValido($tokenEnviado, $tokenGuardado)) {
+                $this->mostrarCheckout("Este pago ya fue enviado o el formulario venció. Revisa el resumen e inténtalo otra vez.");
+                return;
+            }
+
             // Extracción inteligente y blindada del ID de usuario
             $usuarioId = null;
 
@@ -106,46 +106,22 @@ class PedidoController {
             }
 
             if (!$usuarioId) {
-                die("Error crítico: No se pudo asociar el pedido a ningún usuario. Por favor, cierra sesión e ingresa nuevamente.");
+                $this->mostrarCheckout("No se pudo asociar el pedido a tu cuenta. Cierra sesión e ingresa nuevamente.");
+                return;
             }
 
             $direccion = trim($_POST['direccion_envio'] ?? '');
 
             if (empty($direccion)) {
-                $error = "La dirección de envío es obligatoria.";
-                require_once dirname(__DIR__) . '/views/layout/header.php';
-                require_once dirname(__DIR__) . '/views/pedido/checkout.php';
-                require_once dirname(__DIR__) . '/views/layout/footer.php';
+                $this->mostrarCheckout("La dirección de envío es obligatoria.");
                 return;
             }
 
-            // VALIDACIÓN DE STOCK FINAL
-            foreach ($_SESSION['carrito'] as $item) {
-                $prodId = $item['producto_id'] ?? $item['id'] ?? $item['id_producto'] ?? null;
-                $cant   = $item['cantidad'] ?? $item['qty'] ?? 1;
-
-                $stmtCheck = $this->db->prepare("SELECT stock, nombre FROM productos WHERE producto_id = ?");
-                $stmtCheck->execute([$prodId]);
-                $prodDb = $stmtCheck->fetch(PDO::FETCH_ASSOC);
-
-                if (!$prodDb || $prodDb['stock'] < $cant) {
-                    $nombreProd = $prodDb['nombre'] ?? 'Producto';
-                    $stockDispo = $prodDb['stock'] ?? 0;
-                    $error = "No se puede procesar la compra. Stock insuficiente para '$nombreProd' (Has solicitado $cant unidades y solo hay $stockDispo disponibles).";
-                    
-                    require_once dirname(__DIR__) . '/views/layout/header.php';
-                    require_once dirname(__DIR__) . '/views/pedido/checkout.php';
-                    require_once dirname(__DIR__) . '/views/layout/footer.php';
-                    return;
-                }
-            }
-
-            // Calcular el total de forma segura
-            $total = 0;
-            foreach ($_SESSION['carrito'] as $item) {
-                $precio = $item['precio'] ?? $item['valor'] ?? 0;
-                $cant   = $item['cantidad'] ?? $item['qty'] ?? 1;
-                $total += $precio * $cant;
+            $errorStock = $this->validarLineasCarrito();
+            $total = $this->totalCarrito();
+            if ($errorStock !== null) {
+                $this->mostrarCheckout($errorStock);
+                return;
             }
 
             try {
@@ -153,7 +129,7 @@ class PedidoController {
                 $this->db->beginTransaction();
 
                 // 1. Insertar el encabezado del pedido
-                $sqlPedido = "INSERT INTO pedidos (usuario_id, total, estado, direccion_envio, fecha_pedido) VALUES (:usuario_id, :total, 'pagado', :direccion_envio, NOW())";
+                $sqlPedido = "INSERT INTO pedidos (usuario_id, total, estado, direccion_envio, fecha_pedido) VALUES (:usuario_id, :total, 'pendiente', :direccion_envio, NOW())";
                 $stmtPedido = $this->db->prepare($sqlPedido);
                 $stmtPedido->execute([
                     ':usuario_id'       => $usuarioId,
@@ -167,13 +143,20 @@ class PedidoController {
                 $sqlDetalle = "INSERT INTO detalle_pedidos (pedido_id, producto_id, cantidad, precio_unitario) VALUES (:pedido_id, :producto_id, :cantidad, :precio_unitario)";
                 $stmtDetalle = $this->db->prepare($sqlDetalle);
 
-                $sqlStock = "UPDATE productos SET stock = stock - :cantidad WHERE producto_id = :producto_id";
+                $sqlStock = "UPDATE productos SET stock = stock - :cantidad WHERE producto_id = :producto_id AND stock >= :cantidad";
                 $stmtStock = $this->db->prepare($sqlStock);
 
                 foreach ($_SESSION['carrito'] as $item) {
                     $prodId = $item['producto_id'] ?? $item['id'] ?? $item['id_producto'] ?? null;
-                    $cant   = $item['cantidad'] ?? $item['qty'] ?? 1;
+                    $cant   = ValidadorCantidad::entero($item['cantidad'] ?? $item['qty'] ?? 0);
                     $precio = $item['precio'] ?? $item['valor'] ?? 0;
+                    $nombre = $item['nombre'] ?? 'Producto';
+
+                    if ($cant < 1) {
+                        throw new RuntimeException(
+                            'La cantidad de unidades de "' . $nombre . '" debe ser mayor a cero.'
+                        );
+                    }
 
                     $stmtDetalle->execute([
                         ':pedido_id'       => $pedidoId,
@@ -186,28 +169,124 @@ class PedidoController {
                         ':cantidad'    => $cant,
                         ':producto_id' => $prodId
                     ]);
+
+                    if ($stmtStock->rowCount() !== 1) {
+                        throw new RuntimeException(
+                            'Stock insuficiente para "' . $nombre . '" al confirmar la compra.'
+                        );
+                    }
                 }
 
                 // Confirmar la transacción
                 $this->db->commit();
 
-                // Vaciar el carrito de la sesión
-                unset($_SESSION['carrito']);
+                // Vaciar el carrito de la sesión y el guardado en base de datos
+                $_SESSION['carrito'] = [];
+                (new CarritoModel())->reemplazar($usuarioId, []);
 
                 // Redirigir a la vista de confirmación
                 header("Location: index.php?c=pedido&a=confirmacion&id=" . $pedidoId);
                 exit();
 
+            } catch (RuntimeException $e) {
+                if ($this->db->inTransaction()) {
+                    $this->db->rollBack();
+                }
+                $this->mostrarCheckout($e->getMessage());
+                return;
             } catch (Exception $e) {
-                // Cancelar transacción en caso de error
-                $this->db->rollBack();
-                die("Error al procesar la compra: " . $e->getMessage());
+                if ($this->db->inTransaction()) {
+                    $this->db->rollBack();
+                }
+                $this->mostrarCheckout("No se pudo procesar la compra. Inténtalo de nuevo.");
+                return;
             }
         }
     }
 
+    private function totalCarrito() {
+        $total = 0;
+        foreach ($_SESSION['carrito'] as $item) {
+            $precio = (float) ($item['precio'] ?? $item['valor'] ?? 0);
+            $cant = ValidadorCantidad::entero($item['cantidad'] ?? $item['qty'] ?? 0);
+            if ($cant > 0 && $precio >= 0) {
+                $total += $precio * $cant;
+            }
+        }
+        return $total;
+    }
+
+    private function validarLineasCarrito() {
+        foreach ($_SESSION['carrito'] as $clave => $item) {
+            $prodId = $item['producto_id'] ?? $item['id'] ?? $item['id_producto'] ?? null;
+            $cant = $item['cantidad'] ?? $item['qty'] ?? 0;
+            $nombre = $item['nombre'] ?? 'Producto';
+
+            if (!$prodId) {
+                return 'Hay un producto del carrito sin identificador.';
+            }
+
+            $stmtCheck = $this->db->prepare("SELECT stock, nombre, precio FROM productos WHERE producto_id = ?");
+            $stmtCheck->execute([$prodId]);
+            $prodDb = $stmtCheck->fetch(PDO::FETCH_ASSOC);
+
+            if (!$prodDb) {
+                return '"' . $nombre . '" ya no está disponible.';
+            }
+
+            $_SESSION['carrito'][$clave] = CarritoPrecios::conPrecioActual(
+                $item,
+                $prodDb['precio'],
+                $prodDb['nombre']
+            );
+
+            $error = ValidadorCantidad::mensaje($cant, $prodDb['stock'], $prodDb['nombre']);
+            if ($error !== null) {
+                return $error;
+            }
+        }
+
+        return null;
+    }
+
+    private function nuevoTokenCheckout() {
+        $token = TokenFormulario::generar();
+        $_SESSION['checkout_token'] = $token;
+        return $token;
+    }
+
+    private function mostrarCheckout($error = null) {
+        $total = $this->totalCarrito();
+        $checkoutToken = $this->nuevoTokenCheckout();
+        $pageTitle = "Finalizar Compra | Blush & Glow";
+        require_once dirname(__DIR__) . '/views/layout/header.php';
+        require_once dirname(__DIR__) . '/views/pedido/checkout.php';
+        require_once dirname(__DIR__) . '/views/layout/footer.php';
+    }
+
+    private function sesionPuedeVerPedido($pedido) {
+        $sesionId = $_SESSION['usuario']['usuario_id'] ?? $_SESSION['usuario']['id'] ?? null;
+        $rol = $_SESSION['usuario']['rol'] ?? '';
+        $dueno = is_array($pedido) ? ($pedido['usuario_id'] ?? null) : null;
+        return AccesoPedido::puedeVer($dueno, $sesionId, $rol);
+    }
+
     // Método para mostrar la confirmación del pedido
     public function confirmacion() {
+        if (!isset($_SESSION['usuario'])) {
+            header("Location: index.php?c=usuario&a=login");
+            exit();
+        }
+
+        $pedidoId = $_GET['id'] ?? null;
+        if ($pedidoId) {
+            $pedido = (new PedidoModel())->obtenerPorId($pedidoId);
+            if (!$this->sesionPuedeVerPedido($pedido)) {
+                header("Location: index.php?c=cliente&a=perfil");
+                exit();
+            }
+        }
+
         $pageTitle = "Pedido Confirmado | Blush & Glow";
         require_once dirname(__DIR__) . '/views/layout/header.php';
         require_once dirname(__DIR__) . '/views/pedido/confirmacion.php';
@@ -225,17 +304,19 @@ class PedidoController {
 
         if ($pedidoId) {
             $pedidoModel = new PedidoModel();
+            $pedido = $pedidoModel->obtenerPorId($pedidoId);
+
+            if (!$this->sesionPuedeVerPedido($pedido)) {
+                header("Location: index.php?c=cliente&a=perfil");
+                exit();
+            }
+
             $detalles = $pedidoModel->obtenerDetallePedido($pedidoId);
 
             $pageTitle = "Detalle del Pedido #" . $pedidoId;
             
             require_once dirname(__DIR__) . '/views/layout/header.php';
-            // Carga unificada para evitar desajustes de rutas en las vistas de detalle
-            if (file_exists(dirname(__DIR__) . '/views/cliente/pedido/detalle.php')) {
-                require_once dirname(__DIR__) . '/views/cliente/pedido/detalle.php';
-            } else {
-                require_once dirname(__DIR__) . '/views/pedido/detalle.php';
-            }
+            require_once dirname(__DIR__) . '/views/cliente/pedido/detalle.php';
             require_once dirname(__DIR__) . '/views/layout/footer.php';
         } else {
             header("Location: index.php?c=cliente&a=perfil");

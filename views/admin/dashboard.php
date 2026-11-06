@@ -2,6 +2,9 @@
 // views/admin/dashboard.php
 ?>
 <main style="max-width: 1100px; margin: 0 auto; padding: 2rem; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+    <?php if (!empty($_SESSION['flash_error'])): ?>
+        <p style="background:#f8d7da; color:#721c24; padding:0.8rem 1rem; border-radius:6px;"><?php echo htmlspecialchars($_SESSION['flash_error']); unset($_SESSION['flash_error']); ?></p>
+    <?php endif; ?>
     <h1 style="color: #b85b74; margin-bottom: 0.5rem;">Panel de Administración</h1>
     <p style="color: #666; margin-bottom: 2rem;">Bienvenida al centro de control de Blush & Glow.</p>
 
@@ -51,9 +54,15 @@
                                 <td style="padding: 12px; color: #555;"><?php echo $pedido['fecha_pedido']; ?></td>
                                 <td style="padding: 12px; color: #27ae60; font-weight: bold;">$<?php echo number_format($pedido['total'], 2); ?></td>
                                 <td style="padding: 12px;">
-                                    <span style="background: #fef3c7; color: #d97706; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem; font-weight: bold;">
-                                        <?php echo $pedido['estado']; ?>
-                                    </span>
+                                    <form action="index.php?c=admin&a=estado" method="POST" style="display:flex; gap:0.4rem; align-items:center;">
+                                        <input type="hidden" name="pedido_id" value="<?php echo (int) $pedido['pedido_id']; ?>">
+                                        <select name="estado" style="padding:0.3rem;">
+                                            <?php foreach (['pendiente', 'pagado', 'enviado', 'completado', 'cancelado'] as $estado): ?>
+                                                <option value="<?php echo $estado; ?>" <?php echo $pedido['estado'] === $estado ? 'selected' : ''; ?>><?php echo $estado; ?></option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                        <button type="submit" style="background:#b85b74; color:#fff; border:none; border-radius:4px; padding:0.3rem 0.6rem;">Guardar</button>
+                                    </form>
                                 </td>
                                 <td style="padding: 12px; color: #666;"><?php echo htmlspecialchars($pedido['direccion_envio']); ?></td>
                             </tr>
